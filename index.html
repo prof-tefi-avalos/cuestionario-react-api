@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cuestionario · Clase 12 🧠</title>
+<style>
+  :root { --bg:#0b1220; --panel:#131c31; --p2:#1a2540; --tx:#e6eaf5; --su:#8b93ad; --cy:#61dafb; --ve:#34d399; --ro:#fb7185; --am:#fbbf24; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx); font-family:'Segoe UI',system-ui,sans-serif; min-height:100vh; display:grid; place-items:center; padding:16px; }
+  .app { width:100%; max-width:720px; }
+  h1 { margin:0 0 4px; font-size:28px; } .sub { color:var(--su); margin:0 0 16px; }
+  .hud { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .chip { background:var(--panel); padding:8px 14px; border-radius:999px; font-size:14px; }
+  .chip b { color:var(--am); }
+  .barra { height:8px; background:var(--panel); border-radius:99px; overflow:hidden; margin-bottom:16px; }
+  .barra i { display:block; height:100%; width:0; background:linear-gradient(90deg,var(--cy),#a78bfa,#f472b6); transition:width .3s; }
+  .card { background:var(--panel); border-radius:18px; padding:22px; }
+  .tag { color:#a78bfa; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .q { font-size:19px; margin:8px 0 14px; }
+  pre { background:#0a0f1c; color:#c3e88d; padding:16px; border-radius:12px; overflow:auto; font-size:15px; line-height:1.5; margin:0 0 16px; white-space:pre-wrap; }
+  .btns { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  button { font:inherit; border:0; border-radius:14px; padding:14px; cursor:pointer; color:#04120c; font-weight:700; font-size:16px; }
+  .si { background:var(--ve); } .no { background:var(--ro); color:#2a0610; }
+  button:disabled { opacity:.45; cursor:default; }
+  .fb { margin-top:16px; padding:14px 16px; border-radius:12px; font-size:15px; line-height:1.5; }
+  .fb.ok { background:#10281f; border:1px solid var(--ve); } .fb.mal { background:#2a121a; border:1px solid var(--ro); }
+  .fb code, .fb pre { color:var(--cy); }
+  .fixlbl { margin-top:10px; font-weight:700; }
+  .fb pre { margin:6px 0 0; padding:10px 12px; font-size:14px; }
+  .next { background:var(--cy); margin-top:14px; width:100%; }
+  .fin { text-align:center; } .fin .big { font-size:56px; margin:6px 0; } .fin h2 { margin:0 0 6px; }
+  .hide { display:none; }
+  @media (max-width:480px){ .btns{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🧠 Cuestionario · Clase 12</h1>
+  <p class="sub">Llamadas API, useEffect, fetch, POST, Axios, CORS y proxy. Decidí rápido y justificá.</p>
+  <div class="hud"><span class="chip">Pregunta <b id="n">1</b>/<span id="t"></span></span><span class="chip">Puntos <b id="pts">0</b></span><span class="chip">Racha 🔥 <b id="racha">0</b></span></div>
+  <div class="barra"><i id="prog"></i></div>
+
+  <div class="card" id="juego">
+    <div class="tag" id="tag"></div>
+    <div class="q" id="q"></div>
+    <pre id="code"></pre>
+    <div class="btns">
+      <button class="si" id="bsi">✅ <span id="lsi"></span></button>
+      <button class="no" id="bno">❌ <span id="lno"></span></button>
+    </div>
+    <div class="fb hide" id="fb"></div>
+    <button class="next hide" id="next">Siguiente →</button>
+  </div>
+
+  <div class="card fin hide" id="fin">
+    <div class="big" id="emoji">🏆</div>
+    <h2 id="rango"></h2>
+    <p id="res"></p>
+    <button class="next" onclick="empezar()">↺ Jugar de nuevo (preguntas mezcladas)</button>
+  </div>
+</div>
+
+<script>
+const PREGUNTAS = [
+  // ─── useEffect ──────────────────────────────────────────────────────────────
+  { tipo:'code', q:'¿Este componente pide los datos de forma correcta?', code:'function Pokedex() {\n  const [lista, setLista] = useState([]);\n\n  fetch(URL)\n    .then((r) => r.json())\n    .then((d) => setLista(d.results));\n\n  return <Grilla lista={lista} />;\n}', ok:false,
+    exp:'Es un <b>bucle infinito</b>. El fetch está suelto en el cuerpo del componente, que se ejecuta en cada render: llegan los datos → <code>setLista</code> → nuevo render → otro fetch → … para siempre. Pedir datos es un <b>efecto secundario</b> y va adentro de un <code>useEffect</code>.',
+    fix:'useEffect(() => {\n  fetch(URL)\n    .then((r) => r.json())\n    .then((d) => setLista(d.results));\n}, []); // una sola vez, al montar' },
+  { tipo:'code', q:'¿Se puede escribir el useEffect así?', code:'useEffect(async () => {\n  const r = await fetch(URL);\n  const datos = await r.json();\n  setPokemones(datos.results);\n}, []);', ok:false,
+    exp:'La función del <code>useEffect</code> <b>no puede ser async</b>. Una función async siempre devuelve una promesa, y useEffect espera que le devuelvan nada o una función de limpieza (React muestra un warning). Se declara una función async <b>adentro</b> y se la llama en la línea siguiente.',
+    fix:'useEffect(() => {\n  async function cargar() {\n    const r = await fetch(URL);\n    const datos = await r.json();\n    setPokemones(datos.results);\n  }\n  cargar();\n}, []);' },
+  { tipo:'code', q:'¿Es una forma válida de usar async/await adentro de un useEffect?', code:'useEffect(() => {\n  async function cargar() {\n    const r = await fetch(URL);\n    const datos = await r.json();\n    setPokemones(datos.results);\n  }\n  cargar();\n}, []);', ok:true,
+    exp:'Correcto: la función del efecto es común, y la async está <b>adentro</b>. Ojo: para una app real todavía le faltan los estados de <b>cargando</b> y <b>error</b> y revisar <code>r.ok</code>.' },
+  { tipo:'code', q:'El usuario pasa de /pokemon/pikachu a /pokemon/mew. ¿La pantalla se actualiza?', code:'function Detalle() {\n  const { nombre } = useParams();\n  const [pokemon, setPokemon] = useState(null);\n\n  useEffect(() => {\n    obtenerPokemon(nombre).then(setPokemon);\n  }, []);\n  …\n}', ok:false,
+    exp:'Falta <code>nombre</code> en las dependencias. React Router <b>no desmonta</b> el componente al cambiar solo el parámetro, y con <code>[]</code> el efecto no se repite: la URL dice Mew y la pantalla sigue mostrando a Pikachu. Regla: <b>todo lo que el efecto usa y puede cambiar va en el array</b>.',
+    fix:'useEffect(() => {\n  obtenerPokemon(nombre).then(setPokemon);\n}, [nombre]);' },
+  { tipo:'code', q:'¿Este efecto se ejecuta una cantidad razonable de veces?', code:'const [pokemones, setPokemones] = useState([]);\n\nuseEffect(() => {\n  obtenerLista().then(setPokemones);\n}, [pokemones]);', ok:false,
+    exp:'Bucle infinito: el efecto hace <code>setPokemones</code>, y <code>pokemones</code> está en sus dependencias. Cada respuesta trae un <b>array nuevo</b> → cambió la dependencia → el efecto se repite → otro array nuevo… Para cargar los datos iniciales va <code>[]</code>.',
+    fix:'useEffect(() => {\n  obtenerLista().then(setPokemones);\n}, []);' },
+  { tipo:'code', q:'¿Este efecto se ejecuta solo cuando cambia el tipo?', code:'function Lista({ tipo }) {\n  const filtros = { tipo: tipo, limite: 20 };\n\n  useEffect(() => {\n    buscar(filtros).then(setLista);\n  }, [filtros]);\n  …\n}', ok:false,
+    exp:'<code>filtros</code> es un objeto que se crea <b>de nuevo en cada render</b>. React compara las dependencias por referencia: aunque tenga lo mismo adentro, para React es otro objeto, y el efecto se repite en cada render. Hay que depender de <b>valores simples</b> (texto, número, id).',
+    fix:'useEffect(() => {\n  buscar({ tipo, limite: 20 }).then(setLista);\n}, [tipo]);' },
+  { tipo:'code', q:'Si el usuario toca Pikachu y enseguida Mew, ¿este código evita que la respuesta de Pikachu pise a la de Mew?', code:'useEffect(() => {\n  let ignorar = false;\n\n  obtenerPokemon(nombre).then((p) => {\n    if (!ignorar) setPokemon(p);\n  });\n\n  return () => {\n    ignorar = true;\n  };\n}, [nombre]);', ok:true,
+    exp:'Correcto: es la <b>función de limpieza</b>. Antes de repetir el efecto con el nombre nuevo, React llama a la limpieza del anterior, que pone <code>ignorar = true</code>. Cuando la respuesta vieja llega, el <code>if</code> la descarta. Así se evita la <b>condición de carrera</b>.' },
+  { tipo:'code', q:'¿Este componente funciona en el primer render, antes de que lleguen los datos?', code:'const [pokemones, setPokemones] = useState();\n\n// … useEffect con el fetch …\n\nreturn (\n  <ul>\n    {pokemones.map((p) => <li key={p.name}>{p.name}</li>)}\n  </ul>\n);', ok:false,
+    exp:'<code>useState()</code> sin valor inicial arranca en <code>undefined</code>. El primer render ocurre <b>antes</b> de que lleguen los datos, y <code>undefined.map</code> rompe con <i>"Cannot read properties of undefined (reading \'map\')"</i>. Si vas a hacer un <code>.map()</code>, el estado arranca como <b>array vacío</b>.',
+    fix:'const [pokemones, setPokemones] = useState([]);' },
+
+  // ─── fetch y GET ────────────────────────────────────────────────────────────
+  { tipo:'code', q:'Si la API responde 404, ¿se muestra el mensaje de error?', code:'try {\n  const r = await fetch(`${URL}/pokemon/noexiste`);\n  const datos = await r.json();\n  setPokemon(datos);\n} catch (err) {\n  setError("No existe ese Pokémon");\n}', ok:false,
+    exp:'Es la trampa de fetch: un <b>404 o un 500 no caen en el catch</b>. Para fetch eso también es "una respuesta". Solo rechaza la promesa si no hubo respuesta (sin internet, servidor apagado, CORS). Hay que revisar <code>r.ok</code> y tirar el error nosotros.',
+    fix:'const r = await fetch(`${URL}/pokemon/noexiste`);\nif (!r.ok) {\n  throw new Error(`Error ${r.status}`);\n}\nconst datos = await r.json();' },
+  { tipo:'code', q:'¿En `datos.results` está la lista de Pokémon?', code:'const r = await fetch(URL);\nconst datos = r.json();\nsetPokemones(datos.results);', ok:false,
+    exp:'Falta el <b>segundo await</b>. <code>r.json()</code> también devuelve una promesa: sin <code>await</code>, <code>datos</code> es una promesa pendiente y <code>datos.results</code> es <code>undefined</code>. fetch tiene <b>dos esperas</b>: la respuesta y el body.',
+    fix:'const r = await fetch(URL);\nconst datos = await r.json();\nsetPokemones(datos.results);' },
+  { tipo:'code', q:'¿Este GET maneja bien los tres estados?', code:'const [pokemones, setPokemones] = useState([]);\nconst [cargando, setCargando] = useState(true);\nconst [error, setError] = useState(null);\n\nuseEffect(() => {\n  async function cargar() {\n    try {\n      const r = await fetch(URL);\n      if (!r.ok) throw new Error(`Error ${r.status}`);\n      const datos = await r.json();\n      setPokemones(datos.results);\n    } catch (err) {\n      setError(err.message);\n    } finally {\n      setCargando(false);\n    }\n  }\n  cargar();\n}, []);', ok:true,
+    exp:'Correcto, es <b>EL patrón</b>: <code>pokemones</code> arranca como array vacío, <code>cargando</code> en true (el pedido sale apenas se monta), <code>error</code> en null. Revisa <code>r.ok</code>, y <code>finally</code> apaga el cargando <b>siempre</b>, salga bien o mal.' },
+  { tipo:'code', q:'Si la API devuelve una lista vacía, ¿qué se ve en pantalla?', code:'{resultados.length && (\n  <ul>…</ul>\n)}', ok:false,
+    exp:'Se ve un <b>0</b>. Con un array vacío, <code>length</code> es <code>0</code>, que es "falso": <code>&&</code> devuelve ese <code>0</code> y React lo dibuja. El estado <b>vacío</b> no es un error y merece su propio mensaje: compará siempre con algo.',
+    fix:'{resultados.length === 0\n  ? <p>No hay resultados.</p>\n  : <ul>…</ul>}' },
+  { tipo:'code', q:'¿Este servicio sigue las buenas prácticas de la clase?', code:'// servicios/pokeapi.js\nconst URL_BASE = "https://pokeapi.co/api/v2";\n\nexport async function obtenerPokemon(nombre) {\n  const r = await fetch(`${URL_BASE}/pokemon/${nombre}`);\n  if (!r.ok) throw new Error(`Error ${r.status}`);\n  const p = await r.json();\n  return { nombre: p.name, alturaMetros: p.height / 10 };\n}', ok:true,
+    exp:'Correcto: el fetch vive en un <b>servicio</b>, la URL base está en <b>una sola constante</b>, revisa <code>r.ok</code> y <b>adapta</b> los datos (la API manda <code>name</code> y la altura en decímetros; la app usa <code>nombre</code> y metros). Si la API cambia, solo se toca este archivo.' },
+
+  // ─── POST ───────────────────────────────────────────────────────────────────
+  { tipo:'code', q:'¿Este POST le manda bien el voto a la API?', code:'await fetch(URL, {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: voto,\n});', ok:false,
+    exp:'Falta <code>JSON.stringify</code>. Por la red viaja <b>texto</b>: si mandás el objeto directo, la API recibe <code>"[object Object]"</code>.',
+    fix:'body: JSON.stringify(voto),' },
+  { tipo:'code', q:'¿Este pedido es un POST?', code:'await fetch("/api/votos", {\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify(voto),\n});', ok:false,
+    exp:'Falta <code>method: "POST"</code>. Sin method, fetch hace un <b>GET</b>, y un GET no puede llevar body: fetch tira <i>"Request with GET/HEAD method cannot have body"</i>. Las tres cosas obligatorias del POST: <b>method, headers y body</b>.',
+    fix:'await fetch("/api/votos", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify(voto),\n});' },
+  { tipo:'code', q:'¿Este POST está completo?', code:'const r = await fetch(URL, {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ pokemon: "pikachu" }),\n});\nif (!r.ok) throw new Error(`Error ${r.status}`);\nconst guardado = await r.json(); // { pokemon: "pikachu", id: 101 }', ok:true,
+    exp:'Correcto: <b>method</b>, <b>headers</b> con Content-Type, <b>body</b> con <code>JSON.stringify</code>, revisa <code>r.ok</code> (un POST también puede fallar) y lee lo que devolvió la API: un <b>201 Created</b> con el id nuevo.' },
+  { tipo:'code', q:'¿Es el lugar correcto para enviar el formulario?', code:'function FormularioVoto() {\n  const [voto, setVoto] = useState(null);\n\n  useEffect(() => {\n    if (voto) enviarVoto(voto);\n  }, [voto]);\n\n  return <form onSubmit={…}>…</form>;\n}', ok:false,
+    exp:'<code>useEffect</code> es para pedir datos cuando el componente se monta o cambia una dependencia. Un POST responde a una <b>acción del usuario</b> (un submit) y va en el <b>manejador del evento</b>.',
+    fix:'async function manejarEnvio(e) {\n  e.preventDefault();\n  setEnviando(true);\n  try {\n    await enviarVoto(voto);\n  } finally {\n    setEnviando(false);\n  }\n}' },
+  { tipo:'code', q:'Si la API tarda 2 segundos y el usuario hace 3 clicks, ¿cuántos POST se mandan?', code:'<button type="submit">\n  Enviar voto\n</button>', ok:false,
+    exp:'Se mandan <b>3</b>. Mientras se envía hay que <b>deshabilitar el botón</b> (y conviene cambiarle el texto), usando un estado <code>enviando</code>.',
+    fix:'<button type="submit" disabled={enviando}>\n  {enviando ? "Enviando…" : "Enviar voto"}\n</button>' },
+
+  // ─── Axios ──────────────────────────────────────────────────────────────────
+  { tipo:'code', q:'¿Así se leen los datos con Axios?', code:'const r = await axios.get(URL);\nconst datos = await r.json();\nsetPokemones(datos.results);', ok:false,
+    exp:'Con Axios <b>no hay <code>.json()</code></b>: los datos ya vienen convertidos en <code>r.data</code>. <code>r.json</code> no existe y tira <i>"r.json is not a function"</i>.',
+    fix:'const r = await axios.get(URL);\nsetPokemones(r.data.results);' },
+  { tipo:'code', q:'Con Axios, ¿este control de errores funciona?', code:'const r = await axios.get(URL);\nif (!r.ok) {\n  throw new Error("Falló el pedido");\n}\nsetPokemones(r.data.results);', ok:false,
+    exp:'La respuesta de Axios <b>no tiene <code>ok</code></b>: <code>r.ok</code> es <code>undefined</code>, <code>!undefined</code> es <code>true</code>, y tira el error <b>siempre</b>, incluso cuando salió bien. Además no hace falta: Axios <b>ya tira error</b> con los status 400 y 500, y cae directo en el catch.',
+    fix:'try {\n  const r = await axios.get(URL);\n  setPokemones(r.data.results);\n} catch (err) {\n  setError(err.message);\n}' },
+  { tipo:'code', q:'¿Este POST con Axios está completo?', code:'const r = await axios.post(URL, { pokemon: "pikachu" });\nreturn r.data;', ok:true,
+    exp:'Correcto. Axios convierte el objeto a JSON y pone el header <code>Content-Type</code> solo: no hace falta <code>JSON.stringify</code> ni <code>method</code>. Lo que devolvió la API está en <code>r.data</code>.' },
+  { tipo:'code', q:'¿Para qué sirve este código de Axios?', code:'const api = axios.create({\n  baseURL: "https://pokeapi.co/api/v2",\n  timeout: 8000,\n});\n\nconst r = await api.get("/pokemon/pikachu");', ok:true,
+    exp:'Correcto: es una <b>instancia</b>, una configuración común. La <code>baseURL</code> se escribe una sola vez y cada pedido usa solo la ruta. Con <code>timeout</code>, si tarda más de 8 segundos, falla.' },
+
+  // ─── CORS y proxy ───────────────────────────────────────────────────────────
+  { tipo:'code', q:'Con este proxy configurado (y Vite reiniciado), ¿el fetch pasa por el proxy?', code:'// vite.config.js\nserver: {\n  proxy: {\n    "/api": {\n      target: "https://api.ejemplo.com",\n      changeOrigin: true,\n      rewrite: (ruta) => ruta.replace(/^\\/api/, ""),\n    },\n  },\n}\n\n// en el componente\nfetch("https://api.ejemplo.com/productos")', ok:false,
+    exp:'Con la URL <b>completa</b>, el navegador va directo a la API y el proxy <b>nunca se usa</b> (sigue el error de CORS). Hay que usar la URL <b>relativa</b>: el navegador le pide a Vite (su mismo origen) y Vite la reenvía.',
+    fix:'fetch("/api/productos")\n// → Vite la reenvía a https://api.ejemplo.com/productos' },
+  { tipo:'code', q:'¿Esta es una buena solución para el error de CORS?', code:'const r = await fetch("https://api.ejemplo.com/productos", {\n  mode: "no-cors",\n});\nconst datos = await r.json();', ok:false,
+    exp:'Con <code>mode: "no-cors"</code> el error desaparece, pero la respuesta llega <b>vacía</b> (opaca): no se puede leer nada y <code>r.json()</code> falla. La solución en desarrollo es el <b>proxy de Vite</b> con URL relativa; en producción, que la API dé permiso.' },
+  { tipo:'code', q:'La app está publicada en https://mitienda.com. ¿Este fetch funciona?', code:'fetch("http://api.mitienda.com/productos")', ok:false,
+    exp:'Desde una página <b>https</b>, el navegador bloquea un fetch a una URL <b>http</b>: se llama <b>contenido mixto</b> ("Mixed Content… This request has been blocked"). Regla simple: en los fetch, <b>siempre https</b>.',
+    fix:'fetch("https://api.mitienda.com/productos")' },
+
+  // ─── Verdadero o falso ──────────────────────────────────────────────────────
+  { tipo:'concepto', q:'“fetch rechaza la promesa (cae en el catch) cuando el servidor responde con un 500.”', code:'', ok:false,
+    exp:'No. fetch solo rechaza cuando <b>no hubo respuesta</b>: sin internet, servidor apagado o bloqueo de CORS. Un 404 o un 500 se detectan con <code>respuesta.ok</code>. Axios, en cambio, sí tira error con 400 y 500.' },
+  { tipo:'concepto', q:'“Un useEffect sin array de dependencias se ejecuta una sola vez, al montar el componente.”', code:'', ok:false,
+    exp:'Al revés: <b>sin array</b> corre después de <b>cada</b> render. Con <code>[]</code> corre una sola vez al montar. Con <code>[valor]</code> corre al montar y cada vez que cambia ese valor.' },
+  { tipo:'concepto', q:'“En desarrollo, ver la misma petición dos veces en la pestaña Red es normal.”', code:'', ok:true,
+    exp:'Sí: es <b>StrictMode</b>, que en desarrollo monta, desmonta y vuelve a montar cada componente. En producción pasa una sola vez. Lo que NO es normal es que sean veinte o infinitas: eso es un problema de dependencias.' },
+  { tipo:'concepto', q:'“Si aparece un error de CORS, es porque la API está caída o mi código de React está mal.”', code:'', ok:false,
+    exp:'No. La petición <b>salió</b> y la API <b>contestó</b>, pero el <b>navegador</b> no le dio la respuesta a nuestro código porque la API no dio permiso (falta el header <code>Access-Control-Allow-Origin</code>). Es una regla de seguridad del navegador.' },
+  { tipo:'concepto', q:'“La misma URL funciona en Postman y falla por CORS desde React porque CORS lo aplica el navegador.”', code:'', ok:true,
+    exp:'Exacto. CORS lo aplica el navegador cuando el código de una página le pide a <b>otro origen</b>. Postman o curl no son una página y no aplican CORS.' },
+  { tipo:'concepto', q:'“http://localhost:5173 y http://localhost:3000 son el mismo origen, porque están en la misma compu.”', code:'', ok:false,
+    exp:'Un origen es <b>protocolo + dominio + puerto</b>. Si cambia uno solo, es otro origen. Acá cambia el puerto, así que para el navegador son <b>sitios distintos</b>.' },
+  { tipo:'concepto', q:'“El proxy de Vite sigue funcionando después de hacer npm run build y publicar la app.”', code:'', ok:false,
+    exp:'No. El proxy existe <b>solo con <code>npm run dev</code></b>. El build genera archivos HTML, CSS y JS: ya no hay servidor de Vite y, por lo tanto, no hay proxy. Por eso se llama "resolver CORS <b>en desarrollo</b>".' },
+  { tipo:'concepto', q:'“Por la red viaja texto: para mandar se usa JSON.stringify y para recibir, respuesta.json().”', code:'', ok:true,
+    exp:'Correcto. <code>JSON.stringify</code> convierte el objeto en texto antes de mandarlo, y <code>respuesta.json()</code> convierte el texto que llega en un objeto de JavaScript.' },
+  { tipo:'concepto', q:'“En GraphQL hay una sola URL y se le manda un POST con una query que dice exactamente qué campos quiero.”', code:'', ok:true,
+    exp:'Sí. En <b>REST</b> cada dato tiene su URL y la forma de la respuesta la decide la API. En <b>GraphQL</b> hay una URL y la forma la decidís vos en la query. REST sigue siendo el más usado (86 % contra 29 %, Postman 2023).' },
+];
+
+let orden, i, pts, racha, aciertos, respondida;
+const $ = id => document.getElementById(id);
+const mezclar = a => a.map(x => [Math.random(), x]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+
+function empezar() {
+  orden = mezclar(PREGUNTAS); i = 0; pts = 0; racha = 0; aciertos = 0;
+  $('t').textContent = orden.length;
+  $('fin').classList.add('hide'); $('juego').classList.remove('hide');
+  mostrar();
+}
+function mostrar() {
+  const p = orden[i]; respondida = false;
+  $('n').textContent = i + 1; $('pts').textContent = pts; $('racha').textContent = racha;
+  $('prog').style.width = (i / orden.length * 100) + '%';
+  $('tag').textContent = p.tipo === 'code' ? '🔎 Analizá el código' : '🧠 Verdadero o falso';
+  $('q').textContent = p.q;
+  $('code').textContent = p.code; $('code').classList.toggle('hide', !p.code);
+  $('lsi').textContent = p.tipo === 'code' ? 'Correcto' : 'Verdadero';
+  $('lno').textContent = p.tipo === 'code' ? 'Tiene un error' : 'Falso';
+  $('bsi').disabled = $('bno').disabled = false;
+  $('fb').classList.add('hide'); $('next').classList.add('hide');
+}
+function responder(dijoSi) {
+  if (respondida) return; respondida = true;
+  const p = orden[i], acerto = dijoSi === p.ok;
+  if (acerto) { racha++; aciertos++; pts += 10 + Math.min(racha - 1, 5) * 2; } else racha = 0;
+  $('pts').textContent = pts; $('racha').textContent = racha;
+  $('bsi').disabled = $('bno').disabled = true;
+  const fb = $('fb');
+  fb.className = 'fb ' + (acerto ? 'ok' : 'mal');
+  const correcta = p.tipo === 'code' ? (p.ok ? 'Correcto' : 'Tiene un error') : (p.ok ? 'Verdadero' : 'Falso');
+  fb.innerHTML = (acerto ? '🎉 <b>¡Bien!</b> ' : '🤔 <b>Ojo.</b> ') + 'La respuesta correcta es <b>' + correcta + '</b>.<br>' + p.exp + (p.fix ? '<div class="fixlbl">✍️ Así queda bien:</div><pre></pre>' : '');
+  if (p.fix) fb.querySelector('pre').textContent = p.fix;
+  $('next').textContent = i === orden.length - 1 ? 'Ver resultado 🏁' : 'Siguiente →';
+  $('next').classList.remove('hide');
+}
+function siguiente() {
+  if (i === orden.length - 1) return fin();
+  i++; mostrar();
+}
+function fin() {
+  $('prog').style.width = '100%';
+  $('juego').classList.add('hide'); $('fin').classList.remove('hide');
+  const pc = aciertos / orden.length;
+  const r = pc >= .9 ? ['🏆', 'Senior de APIs'] : pc >= .7 ? ['🧠', 'Ya lo tenés claro'] : pc >= .5 ? ['🌱', 'Vas por buen camino'] : ['📚', 'A repasar y reintentar'];
+  $('emoji').textContent = r[0]; $('rango').textContent = r[1];
+  $('res').textContent = `${aciertos} de ${orden.length} correctas · ${pts} puntos`;
+}
+$('bsi').onclick = () => responder(true); $('bno').onclick = () => responder(false); $('next').onclick = siguiente;
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === '1') responder(true);
+  if (e.key === 'ArrowRight' || e.key === '2') responder(false);
+  if ((e.key === 'Enter' || e.key === ' ') && respondida && !$('fin').offsetParent && document.activeElement.tagName !== 'BUTTON') { e.preventDefault(); siguiente(); }
+});
+empezar();
+</script>
+</body>
+</html>
